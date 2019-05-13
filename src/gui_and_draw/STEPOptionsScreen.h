@@ -47,6 +47,8 @@ protected:
     SliderInput m_ToCubicTolSlider;
     ToggleButton m_TrimTEToggle;
     ToggleButton m_PropExportOriginToggle;
+	ToggleButton m_ExportMetadataToggle;
+	ToggleButton m_ExportSREFToggle;
 
     int m_PrevUnit;
     double m_PrevTol;
@@ -57,6 +59,8 @@ protected:
     double m_PrevToCubicTol;
     bool m_PrevTrimTE;
     bool m_PrevPropExportOrigin;
+	bool m_PrevExportMetadata;
+	bool m_PrevExportSREF;
 
     TriggerButton m_OkButton;
     TriggerButton m_CancelButton;

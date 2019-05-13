@@ -13,7 +13,7 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-STEPOptionsScreen::STEPOptionsScreen( ScreenMgr* mgr ) : BasicScreen( mgr, 250, 296, "STEP Options" )
+STEPOptionsScreen::STEPOptionsScreen( ScreenMgr* mgr ) : BasicScreen( mgr, 250, 325, "STEP Options" )
 {
     m_FLTK_Window->callback( staticCloseCB, this );
 
@@ -54,6 +54,10 @@ STEPOptionsScreen::STEPOptionsScreen( ScreenMgr* mgr ) : BasicScreen( mgr, 250, 
     m_GenLayout.AddSlider( m_ToCubicTolSlider, "Tolerance", 10, "%5.4g", 0, true );
     m_GenLayout.AddYGap();
     m_GenLayout.AddButton( m_PropExportOriginToggle, "Export Props At Origin" );
+	m_GenLayout.AddYGap();
+	m_GenLayout.AddButton(m_ExportMetadataToggle, "Export Metadata");
+	m_GenLayout.AddButton(m_ExportSREFToggle, "Export SREF");
+	m_GenLayout.AddYGap();
 
     m_GenLayout.AddY( 25 );
     m_GenLayout.SetFitWidthFlag( false );
@@ -86,11 +90,19 @@ bool STEPOptionsScreen::Update()
         m_ToCubicTolSlider.Update( veh->m_STEPToCubicTol.GetID() );
         m_TrimTEToggle.Update( veh->m_STEPTrimTE.GetID() );
         m_PropExportOriginToggle.Update( veh->m_STEPExportPropMainSurf.GetID() );
+		m_ExportMetadataToggle.Update( veh->m_STEPExportMetadata.GetID() );
+		m_ExportSREFToggle.Update(veh->m_STEPExportSREF.GetID());
 
         if ( !veh->m_STEPToCubic() )
         {
             m_ToCubicTolSlider.Deactivate();
         }
+
+		if (!veh->m_STEPExportMetadata())
+		{
+			m_ExportSREFToggle.Deactivate();
+		}
+
     }
 
     m_FLTK_Window->redraw();
@@ -134,6 +146,8 @@ void STEPOptionsScreen::GuiDeviceCallBack( GuiDevice* device )
             veh->m_STEPToCubicTol.Set( m_PrevToCubicTol );
             veh->m_STEPTrimTE.Set( m_PrevTrimTE );
             veh->m_STEPExportPropMainSurf.Set( m_PrevPropExportOrigin );
+			veh->m_STEPExportMetadata.Set(m_PrevExportMetadata);
+			veh->m_STEPExportSREF.Set(m_PrevExportSREF);
         }
         Hide();
     }
@@ -160,6 +174,8 @@ bool STEPOptionsScreen::ShowSTEPOptionsScreen()
         m_PrevToCubicTol = veh->m_STEPToCubicTol();
         m_PrevTrimTE = veh->m_STEPTrimTE();
         m_PrevPropExportOrigin = veh->m_STEPExportPropMainSurf();
+		m_PrevExportMetadata = veh->m_STEPExportMetadata();
+        m_PrevExportSREF = veh->m_STEPExportSREF();
     }
 
     while( m_FLTK_Window->shown() )
@@ -187,6 +203,8 @@ void STEPOptionsScreen::CloseCallBack( Fl_Widget *w )
         veh->m_STEPToCubicTol.Set( m_PrevToCubicTol );
         veh->m_STEPTrimTE.Set( m_PrevTrimTE );
         veh->m_STEPExportPropMainSurf.Set( m_PrevPropExportOrigin );
+		veh->m_STEPExportMetadata.Set( m_PrevExportMetadata );
+		veh->m_STEPExportSREF.Set( m_PrevExportSREF );
     }
 
     Hide();

@@ -329,6 +329,8 @@ public:
     BoolParm m_STEPStructureMergePoints;
     BoolParm m_STEPStructureToCubic;
     Parm m_STEPStructureToCubicTol;
+	BoolParm m_STEPExportMetadata;
+	BoolParm m_STEPExportSREF;
 
     IntParm m_IGESLenUnit;
     BoolParm m_IGESSplitSurfs;
