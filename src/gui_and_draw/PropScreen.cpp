@@ -14,7 +14,7 @@ using namespace vsp;
 
 
 //==== Constructor ====//
-PropScreen::PropScreen( ScreenMgr* mgr ) : GeomScreen( mgr, 400, 720, "Propeller" )
+PropScreen::PropScreen( ScreenMgr* mgr ) : GeomScreen( mgr, 400, 760, "Propeller" )
 {
     m_CurrDisplayGroup = NULL;
 
@@ -89,6 +89,37 @@ PropScreen::PropScreen( ScreenMgr* mgr ) : GeomScreen( mgr, 400, 720, "Propeller
     m_DesignLayout.SetSameLineFlag( false );
 
     m_DesignLayout.AddOutput( m_CLiOutput, "CLi", "%6.2f" );
+
+    m_DesignLayout.SetButtonWidth( m_DesignLayout.GetW() / 6 );
+    m_DesignLayout.SetInputWidth( m_DesignLayout.GetButtonWidth() );
+
+    m_DesignLayout.SetFitWidthFlag( false );
+    m_DesignLayout.SetSameLineFlag( true );
+
+    m_DesignLayout.AddOutput( m_ChordOutput, "C/R", "%7.4f" );
+    m_DesignLayout.AddOutput( m_TChordOutput, "C_T/R", "%7.4f" );
+    m_DesignLayout.AddOutput( m_PChordOutput, "C_P/R", "%7.4f" );
+
+    char buf[16];
+    int indx = 0;
+    indx += fl_utf8encode( 963, &buf[ indx ] ); // Greek character sigma
+    buf[ indx ] = 0;
+    m_DesignLayout.ForceNewLine();
+    m_DesignLayout.AddOutput( m_SolidityOutput, buf, "%7.4f" );
+
+    buf[ indx ] = '_';
+    buf[ indx + 1 ] = 'T';
+    buf[ indx + 2 ] = 0;
+    m_DesignLayout.AddOutput( m_TSolidityOutput, buf, "%7.4f" );
+
+    buf[ indx + 1 ] = 'P';
+    m_DesignLayout.AddOutput( m_PSolidityOutput, buf, "%7.4f" );
+
+    m_DesignLayout.ForceNewLine();
+    m_DesignLayout.SetFitWidthFlag( true );
+    m_DesignLayout.SetSameLineFlag( false );
+
+    m_DesignLayout.SetButtonWidth( 100 );
 
     m_DesignLayout.AddYGap();
 
@@ -420,6 +451,8 @@ PropScreen::PropScreen( ScreenMgr* mgr ) : GeomScreen( mgr, 400, 720, "Propeller
     m_AfFileGroup.AddOutput( m_AfFileNameOutput, "Name" );
     m_AfFileGroup.AddYGap();
     m_AfFileGroup.AddSlider( m_AfFileChordSlider, "Chord", 10, "%7.3f" );
+    m_AfFileGroup.AddSlider( m_AfFileThickChordSlider, "T/C", 1, "%7.5f" );
+    m_AfFileGroup.AddOutput( m_AfFileBaseThickChordOutput, "Base T/C", "%7.5f" );
     m_AfFileGroup.AddYGap();
     m_AfFileGroup.AddButton( m_AfFileInvertButton, "Invert Airfoil" );
     m_AfFileGroup.AddYGap();
@@ -900,6 +933,12 @@ bool PropScreen::Update()
     char str[255];
     m_AFOutput.Update( propeller_ptr->m_AF.GetID() );
     m_CLiOutput.Update( propeller_ptr->m_CLi.GetID() );
+    m_SolidityOutput.Update( propeller_ptr->m_Solidity.GetID() );
+    m_TSolidityOutput.Update( propeller_ptr->m_TSolidity.GetID() );
+    m_PSolidityOutput.Update( propeller_ptr->m_PSolidity.GetID() );
+    m_ChordOutput.Update( propeller_ptr->m_Chord.GetID() );
+    m_TChordOutput.Update( propeller_ptr->m_TChord.GetID() );
+    m_PChordOutput.Update( propeller_ptr->m_PChord.GetID() );
 
     m_PropModeChoice.Update( propeller_ptr->m_PropMode.GetID() );
 
@@ -1191,6 +1230,8 @@ bool PropScreen::Update()
                 assert( affile_xs );
 
                 m_AfFileChordSlider.Update( affile_xs->m_Chord.GetID() );
+                m_AfFileThickChordSlider.Update( affile_xs->m_ThickChord.GetID() );
+                m_AfFileBaseThickChordOutput.Update( affile_xs->m_BaseThickness.GetID() );
                 m_AfFileInvertButton.Update( affile_xs->m_Invert.GetID() );
                 m_AfFileNameOutput.Update( affile_xs->GetAirfoilName() );
                 m_AfFileDegreeCounter.Update( affile_xs->m_FitDegree.GetID() );

@@ -58,6 +58,12 @@ protected:
     SliderInput m_AFLimitSlider;
     Output m_AFOutput;
     Output m_CLiOutput;
+    Output m_SolidityOutput;
+    Output m_TSolidityOutput;
+    Output m_PSolidityOutput;
+    Output m_ChordOutput;
+    Output m_TChordOutput;
+    Output m_PChordOutput;
 
     Choice m_PropModeChoice;
 
@@ -182,6 +188,8 @@ protected:
     StringOutput m_AfFileNameOutput;
     CheckButton m_AfFileInvertButton;
     SliderAdjRangeInput m_AfFileChordSlider;
+    SliderAdjRangeInput m_AfFileThickChordSlider;
+    Output m_AfFileBaseThickChordOutput;
 
     TriggerButton m_AfFileFitCSTButton;
     Counter m_AfFileDegreeCounter;

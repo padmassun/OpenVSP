@@ -17,6 +17,8 @@
 #include "Cluster.h"
 #include "StlHelper.h"
 #include "Util.h"
+#include "VehicleMgr.h"
+#include "Vehicle.h"
 
 using std::string;
 using namespace vsp;
@@ -37,6 +39,11 @@ wxplot2d([[discrete, pcli], cli(0.06,p)], [p,0.05,0.95], [style, points, lines],
 
 double CalcFourDigitCLi( double m, double p )
 {
+    if ( m <= 0 || p < 0.1 || p > 0.9 )
+    {
+        return 0.0;
+    }
+
     double p2 = p * p;
     double p3 = p2 * p;
     double p4 = p2 * p2;
@@ -50,6 +57,11 @@ double CalcFourDigitCLi( double m, double p )
 
 double CalcFourDigitCamber( double CLi, double p )
 {
+    if ( p < 0.1 || p > 0.9 )
+    {
+        return 0.0;
+    }
+
     double CLi1 = CalcFourDigitCLi( 1.0, p );
 
     return CLi / CLi1;
@@ -244,7 +256,7 @@ FourSeries::FourSeries( ) : NACABase( )
 {
     m_Type = XS_FOUR_SERIES;
     m_Camber.Init( "Camber", m_GroupName, this, 0.0, 0.0, 0.09 );
-    m_CamberLoc.Init( "CamberLoc", m_GroupName, this, 0.2, 0.0, 1.0 );
+    m_CamberLoc.Init( "CamberLoc", m_GroupName, this, 0.2, 0.1, 0.9 );
     m_EqArcLen.Init( "EqArcLenFlag", m_GroupName, this, true, 0, 1 );
     m_SharpTE.Init( "SharpTEFlag", m_GroupName, this, true, 0, 1 );
 
@@ -1018,6 +1030,8 @@ FileAirfoil::FileAirfoil( ) : Airfoil( )
 {
     m_Type = XS_FILE_AIRFOIL;
 
+    m_BaseThickness.Init( "BaseThickChord", m_GroupName, this, 0.1, 0.0, 1.0 );
+
     // Initialize to closed circle.
     int n = 21;
     for ( int i = 0; i < n; i++ )
@@ -1027,10 +1041,13 @@ FileAirfoil::FileAirfoil( ) : Airfoil( )
         theta = PI+PI*i/(n-1);
         m_LowerPnts.push_back( vec3d( 0.5 + 0.5*cos(theta), 0.5*sin(theta), 0.0 ) );
     }
+
+    MakeCurve();
+    m_BaseThickness.Set( CalculateThick() );
+    m_ThickChord.Set( m_BaseThickness() );
 }
 
-//==== Update ====//
-void FileAirfoil::Update()
+void FileAirfoil::MakeCurve()
 {
     //==== Load Points ====//
     vector< vec3d > pnts;
@@ -1079,6 +1096,15 @@ void FileAirfoil::Update()
     }
 
     m_Curve.InterpolatePCHIP( pnts, arclen, false );
+}
+
+//==== Update ====//
+void FileAirfoil::Update()
+{
+    MakeCurve();
+
+    double rat = m_ThickChord() / m_BaseThickness();
+    m_Curve.ScaleY( rat );
 
     Airfoil::Update();
 }
@@ -1111,6 +1137,18 @@ xmlNodePtr FileAirfoil::DecodeXml( xmlNodePtr & node )
         m_AirfoilName = XmlUtil::FindString( child_node, "AirfoilName", m_AirfoilName );
         m_UpperPnts = XmlUtil::ExtractVectorVec3dNode( child_node, "UpperPnts" );
         m_LowerPnts = XmlUtil::ExtractVectorVec3dNode( child_node, "LowerPnts" );
+
+        MakeCurve();
+        m_BaseThickness.Set( CalculateThick() );
+
+        // Ver reports the version of the file being read from disk.
+        // When working in memory (copy/paste), ver should equal -1.
+        int ver = VehicleMgr.GetVehicle()->GetFileVersion();
+        if ( ver > 0 && ver < 5 ) // Reading from a file and the file is of version less than 5.
+        {
+            // The existing T/C value is meaningless and should be over-ridden with the base value.
+            m_ThickChord.Set( m_BaseThickness() );
+        }
     }
     return child_node;
 }
@@ -1185,12 +1223,14 @@ bool FileAirfoil::ReadFile( string file_name )
     StringUtil::change_from_to( m_AirfoilName, '\r', ' ' );
     StringUtil::remove_trailing( m_AirfoilName, ' ' );
 
+    MakeCurve();
+    m_BaseThickness.Set( CalculateThick() );
+    m_ThickChord.Set( m_BaseThickness() );
+
     fclose( file_id );
 
     return valid_file;
-
 }
-
 
 //==== Read Selig Airfoil File ====//
 bool FileAirfoil::ReadSeligAirfoil( FILE* file_id )

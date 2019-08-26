@@ -37,9 +37,17 @@
 #include <stack>
 #include <memory>
 
-
+// File versions must be integers.
 #define MIN_FILE_VER 4 // Lowest file version number for 3.X vsp file
-#define CURRENT_FILE_VER 4 // File version number for 3.X files that this executable writes
+#define CURRENT_FILE_VER 5 // File version number for 3.X files that this executable writes
+
+// We have not made substantial use of this flag to determine file compatibility issues.  However,
+// its use will likely increase going forward.  Most parameters additions and file format changes
+// can be made without incrementing the format number.  Increments should be used to ensure compatibility.
+//
+// 4 -- 3.0      Base 3.X file.
+// 5 -- 3.17.1   Add support for scaling thickness of file-type airfoils.
+//
 
 /*!
 * Centralized place to access all GUI related Parm objects.
@@ -158,6 +166,7 @@ public:
 
     void SetVSP3FileName( const string & f_name );
     string GetVSP3FileName()                                { return m_VSP3FileName; }
+    int GetFileVersion()                                    { return m_FileOpenVersion; }
 
     void SetupPaths();
 
@@ -194,6 +203,8 @@ public:
     void WriteX3DViewpointProps( xmlNodePtr node, string orients, string cents, string posits, string sfov, string name );
     void WritePovRayFile( const string & file_name, int write_set );
     void WriteSTEPFile( const string & file_name, int write_set );
+    void WriteSTEPFile( const string & file_name, int write_set, bool labelID,
+                        bool labelName, bool labelSurfNo, int delimType );
     void WriteStructureSTEPFile( const string & file_name );
     void WriteIGESFile( const string & file_name, int write_set );
     void WriteIGESFile( const string & file_name, int write_set, int lenUnit, bool splitSubSurfs, bool splitSurfs,
@@ -322,6 +333,11 @@ public:
     Parm m_STEPToCubicTol;
     BoolParm m_STEPTrimTE;
     BoolParm m_STEPExportPropMainSurf;
+
+    BoolParm m_STEPLabelID;
+    BoolParm m_STEPLabelName;
+    BoolParm m_STEPLabelSurfNo;
+    IntParm m_STEPLabelDelim;
 
     IntParm m_STEPStructureExportIndex;
     Parm m_STEPStructureTol;

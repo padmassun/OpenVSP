@@ -293,6 +293,24 @@ PropGeom::PropGeom( Vehicle* vehicle_ptr ) : GeomXSec( vehicle_ptr )
     m_CLi.Init( "CLi", "Design", this, 0.5, 0, 1e12 );
     m_CLi.SetDescript( "Integrated design lift coefficient" );
 
+    m_Solidity.Init( "Solidity", "Design", this, 0.5, 0, 1.0 );
+    m_Solidity.SetDescript( "Geometric blade solidity" );
+
+    m_TSolidity.Init( "TSolidity", "Design", this, 0.5, 0, 1.0 );
+    m_TSolidity.SetDescript( "Thrust weighted blade solidity" );
+
+    m_PSolidity.Init( "PSolidity", "Design", this, 0.5, 0, 1.0 );
+    m_PSolidity.SetDescript( "Power weighted blade solidity" );
+
+    m_Chord.Init( "Chord", "Design", this, 0.5, 0, 1.0 );
+    m_Chord.SetDescript( "Geometric blade chord" );
+
+    m_TChord.Init( "TChord", "Design", this, 0.5, 0, 1.0 );
+    m_TChord.SetDescript( "Thrust weighted blade chord" );
+
+    m_PChord.Init( "PChord", "Design", this, 0.5, 0, 1.0 );
+    m_PChord.SetDescript( "Power weighted blade chord" );
+
     m_LECluster.Init( "LECluster", "Design", this, 0.25, 1e-4, 10.0 );
     m_LECluster.SetDescript( "LE Tess Cluster Control" );
 
@@ -716,8 +734,18 @@ void PropGeom::UpdateSurf()
     // Set lower limit for activity factor integration limit
     m_AFLimit.SetLowerLimit( rfirst );
     // Integrate activity factor.
-    m_AF.Set( m_ChordCurve.IntegrateAF( m_AFLimit() ) );
-    m_CLi.Set( m_CLICurve.IntegrateCLi( m_AFLimit() ) );
+    m_AF.Set( ( 100000.0 / 16.0 ) * 0.5 * m_ChordCurve.IntegrateCrv_rcub( m_AFLimit() ) );
+    m_CLi.Set( 4.0 * m_CLICurve.IntegrateCrv_rcub( m_AFLimit() ) );
+
+    double r03 = rfirst * rfirst * rfirst;
+    double r04 = r03 * rfirst;
+    m_Chord.Set( m_ChordCurve.IntegrateCrv( rfirst ) / ( 1.0 - rfirst ) );
+    m_TChord.Set( 3.0 * m_ChordCurve.IntegrateCrv_rsq( rfirst ) / ( 1.0 - r03 ) );
+    m_PChord.Set( 4.0 * m_ChordCurve.IntegrateCrv_rcub( rfirst ) / ( 1.0 - r04 ) );
+
+    m_Solidity.Set( m_Chord() * m_Nblade() / PI );
+    m_TSolidity.Set( m_TChord() * m_Nblade() / PI );
+    m_PSolidity.Set( m_PChord() * m_Nblade() / PI );
 
     if ( m_UseBeta34Flag() == 1 )
     {
@@ -955,9 +983,8 @@ void PropGeom::UpdateSurf()
         // surface.
         int npseudo = tmap.size();
 
-        vector< VspCurve > crv_vec;
-        crv_vec.resize( npseudo );
 
+        vector< VspCurve > crv_vec( npseudo );
         vector < rib_data_type > rib_vec( npseudo );
         vector < double > u_pseudo( npseudo );
         for ( int i = 0; i < npseudo; i++ )
@@ -970,11 +997,24 @@ void PropGeom::UpdateSurf()
 
             int istart = std::floor( u );
             int iend = istart + 1;
-            double frac = ( r - rvec[istart] ) / ( rvec[iend] - rvec[istart] );
+
+            double frac = 0;
             if ( iend >= nxsec ) // Make sure index doesn't go off the end.
             {
                 iend = istart;
-                frac = 0;
+            }
+            else
+            {
+                // Try to be safe to overlapping sections.
+                double denom = ( rvec[iend] - rvec[istart] );
+
+                if ( denom <= 1e-6 && iend < nxsec - 1 )
+                {
+                    istart = iend;
+                    iend = istart + 1;
+                    denom = ( rvec[iend] - rvec[istart] );
+                }
+                frac = ( r - rvec[istart] ) / denom;
             }
 
             double t = m_ThickCurve.Comp( r );
@@ -990,7 +1030,7 @@ void PropGeom::UpdateSurf()
             pp.m_ParentProp = this->GetXSecSurf( 0 );
             pp.m_Radius = r * radius;
 
-            pp.m_Chord = m_ChordCurve.Comp( r ) * radius;
+            pp.m_Chord = w;
             pp.m_Twist = m_TwistCurve.Comp( r );
 
             pp.m_Construct = m_Construct();

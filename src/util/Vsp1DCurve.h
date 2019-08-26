@@ -84,9 +84,14 @@ public:
 
     bool IsEqual( const Vsp1DCurve & crv );
 
-    double IntegrateAF( double r0 );
-    double IntegrateCLi( double r0 );
-
+    double IntegrateCrv( );
+    double IntegrateCrv( double r0 );
+    double IntegrateCrv_r( );
+    double IntegrateCrv_r( double r0 );
+    double IntegrateCrv_rsq( );
+    double IntegrateCrv_rsq( double r0 );
+    double IntegrateCrv_rcub( );
+    double IntegrateCrv_rcub( double r0 );
 
 protected:
     oned_piecewise_curve_type m_Curve;

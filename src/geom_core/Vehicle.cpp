@@ -59,6 +59,12 @@ Vehicle::Vehicle()
     m_STEPTrimTE.Init( "TrimTE", "STEPSettings", this, false, 0, 1 );
     m_STEPExportPropMainSurf.Init( "ExportPropMainSurf", "STEPSettings", this, false, 0, 1 );
 
+    m_STEPLabelID.Init( "LabelID", "STEPSettings", this, true, 0, 1 );
+    m_STEPLabelName.Init( "LabelName", "STEPSettings", this, true, 0, 1 );
+    m_STEPLabelSurfNo.Init( "LabelSurfNo", "STEPSettings", this, true, 0, 1 );
+    m_STEPLabelDelim.Init( "LabelDelim", "STEPSettings", this, vsp::DELIM_COMMA, vsp::DELIM_COMMA, vsp::DELIM_NUM_TYPES - 1 );
+
+    m_STEPStructureExportIndex.Init( "StructureExportIndex", "STEPSettings", this, 0, 0, 1000 );
     m_STEPStructureTol.Init( "StructureTolerance", "STEPSettings", this, 1e-6, 1e-12, 1e12 );
     m_STEPStructureSplitSurfs.Init( "StructureSplitSurfs", "STEPSettings", this, true, 0, 1 );
     m_STEPStructureMergePoints.Init( "StructureMergePoints", "STEPSettings", this, true, 0, 1 );
@@ -79,7 +85,7 @@ Vehicle::Vehicle()
     m_IGESLabelSplitNo.Init( "LabelSplitNo", "IGESSettings", this, true, 0, 1 );
     m_IGESLabelDelim.Init( "LabelDelim", "IGESSettings", this, vsp::DELIM_COMMA, vsp::DELIM_COMMA, vsp::DELIM_NUM_TYPES - 1 );
 
-    m_IGESStructureExportIndex.Init( "StructureToCubicTol", "IGESSettings", this, 0, 0, 1000 );
+    m_IGESStructureExportIndex.Init( "StructureExportIndex", "IGESSettings", this, 0, 0, 1000 );
     m_IGESStructureSplitSurfs.Init( "StructureSplitSurfs", "IGESSettings", this, true, 0, 1 );
     m_IGESStructureToCubic.Init( "StructureToCubic", "IGESSettings", this, false, 0, 1 );
     m_IGESStructureToCubicTol.Init( "StructureToCubicTol", "IGESSettings", this, 1e-6, 1e-12, 1e12 );
@@ -1511,6 +1517,8 @@ xmlNodePtr Vehicle::DecodeXml( xmlNodePtr & node )
     WaveDragMgr.DecodeXml( node );
     ParasiteDragMgr.DecodeXml( node );
 
+    ParasiteDragMgr.CorrectTurbEquation();
+
     xmlNodePtr setnamenode = XmlUtil::GetNode( node, "SetNames", 0 );
     if ( setnamenode )
     {
@@ -1646,6 +1654,7 @@ int Vehicle::ReadXMLFile( const string & file_name )
     {
         fprintf( stderr, "document version not supported \n");
         xmlFreeDoc( doc );
+        m_FileOpenVersion = -1;
         return 4;
     }
 
@@ -1657,8 +1666,16 @@ int Vehicle::ReadXMLFile( const string & file_name )
 
     ParmMgr.ResetRemapID( lastreset );
 
+    // This triggers an Update().  It was previously in a code path that was 'above' this ResetRemapID.
+    // Which triggered an 'Unexpected ResetRemapID' warning.
+    if ( VarPresetMgr.GetActiveGroupIndex() >= 0 )
+    {
+        VarPresetMgr.GroupChange( VarPresetMgr.GetActiveGroupIndex() );
+    }
+
     Update();
 
+    m_FileOpenVersion = -1;
     return 0;
 }
 
@@ -1703,6 +1720,7 @@ int Vehicle::ReadXMLFileGeomsOnly( const string & file_name )
     {
         fprintf( stderr, "document version not supported \n");
         xmlFreeDoc( doc );
+        m_FileOpenVersion = -1;
         return 4;
     }
 
@@ -1716,6 +1734,7 @@ int Vehicle::ReadXMLFileGeomsOnly( const string & file_name )
 
     Update();
 
+    m_FileOpenVersion = -1;
     return 0;
 }
 
@@ -2676,6 +2695,14 @@ void Vehicle::FetchXFerSurfs( int write_set, vector< XferSurf > &xfersurfs )
 
 void Vehicle::WriteSTEPFile( const string & file_name, int write_set )
 {
+    WriteSTEPFile( file_name, write_set, m_STEPLabelID(), m_STEPLabelName(), m_STEPLabelSurfNo(), m_STEPLabelDelim() );
+}
+
+void Vehicle::WriteSTEPFile( const string & file_name, int write_set, bool labelID,
+                             bool labelName, bool labelSurfNo, int delimType )
+{
+    string delim = StringUtil::get_delim( delimType );
+
     STEPutil step( m_STEPLenUnit(), m_STEPTol() );
 
     vector< Geom* > geom_vec = FindGeomVec( GetGeomVec() );
@@ -2722,7 +2749,32 @@ void Vehicle::WriteSTEPFile( const string & file_name, int write_set )
                     }
                 }
 
-                step.AddSurf( &surf_vec[j], m_STEPSplitSurfs(), m_STEPMergePoints(), m_STEPToCubic(), m_STEPToCubicTol(), m_STEPTrimTE(), usplit, wsplit );
+                string prefix;
+
+                if ( labelID )
+                {
+                    prefix = geom_vec[i]->GetID();
+                }
+
+                if ( labelName )
+                {
+                    if ( prefix.size() > 0 )
+                    {
+                        prefix.append( delim );
+                    }
+                    prefix.append( geom_vec[i]->GetName() );
+                }
+
+                if ( labelSurfNo )
+                {
+                    if ( prefix.size() > 0 )
+                    {
+                        prefix.append( delim );
+                    }
+                    prefix.append( to_string( j ) );
+                }
+
+                step.AddSurf( &surf_vec[j], m_STEPSplitSurfs(), m_STEPMergePoints(), m_STEPToCubic(), m_STEPToCubicTol(), m_STEPTrimTE(), usplit, wsplit, prefix );
             }
         }
     }

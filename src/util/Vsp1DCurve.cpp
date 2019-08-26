@@ -658,20 +658,48 @@ bool Vsp1DCurve::IsEqual( const Vsp1DCurve & crv )
 
 }
 
-
-struct AF_functor
+struct crv_functor
 {
     double operator()( const double &r )
     {
-        return ( 100000.0 / 16.0 ) * ( 0.5 *  m_crd->CompPnt( r ) ) * r * r * r;
+        return m_crv->CompPnt( r );
     }
-    Vsp1DCurve *m_crd;
+    Vsp1DCurve *m_crv;
 };
 
-// Integrate activity factor.
-// The curve itself is assumed to be blade chord/R.
-// The parameter itself is fraction of the radius.
-double Vsp1DCurve::IntegrateAF( double r0 )
+struct crv_r_functor
+{
+    double operator()( const double &r )
+    {
+        return m_crv->CompPnt( r ) * r;
+    }
+    Vsp1DCurve *m_crv;
+};
+
+struct crv_rsq_functor
+{
+    double operator()( const double &r )
+    {
+        return m_crv->CompPnt( r ) * r * r;
+    }
+    Vsp1DCurve *m_crv;
+};
+
+struct crv_rcub_functor
+{
+    double operator()( const double &r )
+    {
+        return m_crv->CompPnt( r ) * r * r * r;
+    }
+    Vsp1DCurve *m_crv;
+};
+
+double Vsp1DCurve::IntegrateCrv()
+{
+    return IntegrateCrv( 0 );
+}
+
+double Vsp1DCurve::IntegrateCrv( double r0 )
 {
     double rmin = m_Curve.get_t0();
     if ( r0 < rmin )
@@ -679,27 +707,22 @@ double Vsp1DCurve::IntegrateAF( double r0 )
         r0 = rmin;
     }
 
-    AF_functor fun;
-    fun.m_crd = this;
+    crv_functor fun;
+    fun.m_crv = this;
 
     eli::mutil::quad::simpson< double > quad;
 
     return quad( fun, r0, 1.0 );
 }
 
-struct CLi_functor
-{
-    double operator()( const double &r )
-    {
-        return 4.0 * m_cli->CompPnt( r ) * r * r * r;
-    }
-    Vsp1DCurve *m_cli;
-};
-
-// Calculate integrated design lift coefficient
-// The curve itself is assumed to be blade chord/R.
+// Calculate the integral of a given curve weighted by radius.
 // The parameter itself is fraction of the radius.
-double Vsp1DCurve::IntegrateCLi( double r0 )
+double Vsp1DCurve::IntegrateCrv_r()
+{
+    return IntegrateCrv( 0 );
+}
+
+double Vsp1DCurve::IntegrateCrv_r( double r0 )
 {
     double rmin = m_Curve.get_t0();
     if ( r0 < rmin )
@@ -707,8 +730,54 @@ double Vsp1DCurve::IntegrateCLi( double r0 )
         r0 = rmin;
     }
 
-    CLi_functor fun;
-    fun.m_cli = this;
+    crv_r_functor fun;
+    fun.m_crv = this;
+
+    eli::mutil::quad::simpson< double > quad;
+
+    return quad( fun, r0, 1.0 );
+}
+
+// Calculate the integral of a given curve weighted by radius squared.
+// The parameter itself is fraction of the radius.
+double Vsp1DCurve::IntegrateCrv_rsq()
+{
+    return IntegrateCrv( 0 );
+}
+
+double Vsp1DCurve::IntegrateCrv_rsq( double r0 )
+{
+    double rmin = m_Curve.get_t0();
+    if ( r0 < rmin )
+    {
+        r0 = rmin;
+    }
+
+    crv_rsq_functor fun;
+    fun.m_crv = this;
+
+    eli::mutil::quad::simpson< double > quad;
+
+    return quad( fun, r0, 1.0 );
+}
+
+// Calculate the integral of a given curve weighted by radius cubed.
+// The parameter itself is fraction of the radius.
+double Vsp1DCurve::IntegrateCrv_rcub()
+{
+    return IntegrateCrv( 0 );
+}
+
+double Vsp1DCurve::IntegrateCrv_rcub( double r0 )
+{
+    double rmin = m_Curve.get_t0();
+    if ( r0 < rmin )
+    {
+        r0 = rmin;
+    }
+
+    crv_rcub_functor fun;
+    fun.m_crv = this;
 
     eli::mutil::quad::simpson< double > quad;
 

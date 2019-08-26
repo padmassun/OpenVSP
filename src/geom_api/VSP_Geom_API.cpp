@@ -1993,7 +1993,7 @@ string GetFeaStructID( const string & geom_id, int fea_struct_ind )
     FeaStructure* struct_ptr = geom_ptr->GetFeaStruct( fea_struct_ind );
     if ( !struct_ptr )
     {
-        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + fea_struct_ind );
+        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + to_string( ( long long ) fea_struct_ind ) );
         return string();
     }
     ErrorMgr.NoError();
@@ -2028,7 +2028,7 @@ string GetFeaStructName( const string & geom_id, int fea_struct_ind )
     FeaStructure* struct_ptr = geom_ptr->GetFeaStruct( fea_struct_ind );
     if ( !struct_ptr )
     {
-        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + fea_struct_ind );
+        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + to_string( ( long long ) fea_struct_ind ) );
         return string();
     }
     ErrorMgr.NoError();
@@ -2053,7 +2053,7 @@ void SetFeaStructName( const string & geom_id, int fea_struct_ind, const string 
     FeaStructure* struct_ptr = geom_ptr->GetFeaStruct( fea_struct_ind );
     if ( !struct_ptr )
     {
-        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + fea_struct_ind );
+        ErrorMgr.AddError( VSP_INVALID_PTR, "GetFeaStructName::Can't Find FeaStructure " + to_string( ( long long ) fea_struct_ind ) );
         return;
     }
     struct_ptr->SetName( name );
@@ -3095,14 +3095,14 @@ void WriteSeligAirfoilFile( const std::string & airfoil_name, std::vector<vec3d>
     }
 
     string header = airfoil_name + " AIRFOIL\n";
-    fprintf( af, header.c_str() );
+    fprintf( af, "%s", header.c_str() );
 
     char buff[256];
 
     for ( size_t i = 0; i < ordered_airfoil_pnts.size(); i++ )
     {
         sprintf( buff, " %7.6f     %7.6f\n", ordered_airfoil_pnts[i].x(), ordered_airfoil_pnts[i].y() );
-        fprintf( af, buff );
+        fprintf( af, "%s", buff );
     }
 
     fclose( af );
@@ -5168,15 +5168,17 @@ void WriteCfEqnCSVFile(const std::string & file_name)
     te_tw_ratio.push_back(1.0);
     ref_leng.push_back(1.0);
 
-    for (size_t cf_case = 0; cf_case <= vsp::CF_TURB_WHITE_CHRISTOPH_COMPRESSIBLE; ++cf_case )
+    for (size_t cf_case = 0; cf_case <= vsp::DO_NOT_USE_CF_TURB_WHITE_CHRISTOPH_COMPRESSIBLE; ++cf_case )
     {
-        for (size_t j = 0; j < ReyIn_array.size(); ++j )
-        {
-            turb_cf_vec.push_back( ParasiteDragMgr.CalcTurbCf( ReyIn_array[j], ref_leng[0], cf_case, roughness[0], gamma[0], taw_tw_ratio[0], te_tw_ratio[0]) );
+        if ( !ParasiteDragMgr.IsTurbBlacklisted(cf_case ) ) {
+            for ( size_t j = 0; j < ReyIn_array.size(); ++j )
+            {
+                turb_cf_vec.push_back( ParasiteDragMgr.CalcTurbCf( ReyIn_array[j], ref_leng[0], cf_case, roughness[0], gamma[0], taw_tw_ratio[0], te_tw_ratio[0]) );
+            }
+            sprintf( str, "%s", ParasiteDragMgr.AssignTurbCfEqnName( cf_case ).c_str() );
+            res->Add( NameValData( str, turb_cf_vec ) );
+            turb_cf_vec.clear();
         }
-        sprintf( str, "%s", ParasiteDragMgr.AssignTurbCfEqnName( cf_case ).c_str());
-        res->Add(NameValData(str, turb_cf_vec));
-        turb_cf_vec.clear();
     }
 
     for (size_t cf_case = 0; cf_case < vsp::CF_LAM_BLASIUS_W_HEAT; ++cf_case)
@@ -5715,4 +5717,14 @@ void DeleteAllProbes()
     MeasureMgr.DelAllProbes();
 }
 
-}   // vsp namespace
+string GetVSPExePath()
+{
+    Vehicle* veh = VehicleMgr.GetVehicle();
+    if ( veh )
+    {
+        return veh->GetExePath();
+    }
+    return string();
+}   
+
+}// vsp namespace
